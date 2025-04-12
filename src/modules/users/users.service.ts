@@ -1,10 +1,13 @@
-import { Body, Inject, Injectable, UseGuards } from '@nestjs/common';
+import { Body, HttpException, HttpStatus, Inject, Injectable, UseGuards } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { User } from './users.entity';
 import { CreateUserInputDto } from './dtos/create-user.input.dto';
 import { CreateUserOutputDto } from './dtos/create-user.output.dto';
 import { IUsersService } from './interface/users.service.interface';
+import e from 'express';
+import { Role } from '@/shared/enums/role.enum';
+import { ExceptionsHandler } from '@nestjs/core/exceptions/exceptions-handler';
 
 
 @Injectable()
@@ -34,7 +37,10 @@ export class UsersService implements IUsersService {
     });
     console.log(response)
     if (!response) {
-      throw new Error('Usuario não encontrado!')
+      throw new HttpException(
+        'Usuario não encontrado!',
+        HttpStatus.NOT_FOUND,
+      );
     }
     return response;
   }
@@ -54,19 +60,36 @@ export class UsersService implements IUsersService {
     .getMany();
   
     if (!user) {
-      throw new Error('Usuário não encontrado!');
+      throw new HttpException(
+        'Usuario não encontrado!',
+        HttpStatus.NOT_FOUND,
+      );
     }
   
     return user;
   }
 
-  async update(id: number, user: User): Promise<CreateUserOutputDto | null> {
+  async update(id: number, user: CreateUserInputDto): Promise<CreateUserOutputDto | null> {
     const existingUser = await this.userRepo.findOne({ where: { id } });
     if (!existingUser) {
-      throw new Error('Usuario não encontrado!')
+      throw new HttpException(
+        'Usuario não encontrado!',
+        HttpStatus.NOT_FOUND,
+      );
+
     }
+
+    if(user.funcao !== Role.ADMIN && user.funcao !== Role.CLIENT) {
+      throw new HttpException(
+        'Usuário não tem permissão para atualizar!',
+        HttpStatus.BAD_REQUEST,
+      );
+
+
+    }
+
     const updatedUser = { ...existingUser, ...user };
-    this.userRepo.save(updatedUser);
+    await this.userRepo.save(updatedUser);
 
     const userUpdated = await this.userRepo.findOne({ where: { id } });
 

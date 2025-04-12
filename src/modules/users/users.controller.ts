@@ -4,6 +4,7 @@ import { IUsersService } from "./interface/users.service.interface";
 import { CreateUserOutputDto } from "./dtos/create-user.output.dto";
 import { UsersService } from "./users.service";
 import { AuthGuard } from "../auth/guards/auth.guard";
+import { CreateUserInputDto } from "./dtos/create-user.input.dto";
 
 @Controller('users')
 export class UsersController {
@@ -25,7 +26,7 @@ export class UsersController {
 	@UseGuards(AuthGuard)
 	@HttpCode(HttpStatus.OK)
 	@Patch('update/:id')
-	async update(@Param('id') id: number, @Body() user: User): Promise<CreateUserOutputDto | null> {
+	async update(@Param('id') id: number, @Body() user: CreateUserInputDto): Promise<CreateUserOutputDto | null> {
 		return this.usersService.update(id, user);
 	}
 }

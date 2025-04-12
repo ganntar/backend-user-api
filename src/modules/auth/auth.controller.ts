@@ -11,6 +11,7 @@ import {
   } from '@nestjs/common';
   import { AuthGuard } from '../auth/guards/auth.guard';
   import { AuthService } from './auth.service';
+import { ApiBody } from '@nestjs/swagger';
   
   @Controller('auth')
   export class AuthController {
@@ -18,8 +19,8 @@ import {
   
     @HttpCode(HttpStatus.OK)
     @Post('login')
-    signIn(@Body() signInDto: { email: string; senha: string }) {
-      return this.authService.signIn(signInDto.email, signInDto.senha);
+    async login(@Body() signInDto: { email: string; senha: string }) {
+      return this.authService.login(signInDto);
     }
   
     @UseGuards(AuthGuard)
