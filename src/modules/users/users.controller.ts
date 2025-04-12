@@ -1,6 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from "@nestjs/common";
-import { UsersService } from "./users.service";
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { User } from "./users.entity";
+import { IUsersService } from "./interface/users.service.interface";
+import { CreateUserOutputDto } from "./dtos/create-user.output.dto";
+import { UsersService } from "./users.service";
+import { AuthGuard } from "../auth/guards/auth.guard";
 
 @Controller('users')
 export class UsersController {
@@ -8,14 +11,21 @@ export class UsersController {
 	
 	@HttpCode(HttpStatus.OK)
 	@Post('create')
-  async create(@Body() user: User) {
+  async create(@Body() user: User): Promise<CreateUserOutputDto> {
 		return this.usersService.create(user);
 	}
 
+	@UseGuards(AuthGuard)
 	@HttpCode(HttpStatus.OK)
-	@Patch('find/:query')
-	@Get()
-	async findOne(@Param('query') query: string): Promise<User | null> {
+	@Get('find/:query')
+	async find(@Param('query') query: string): Promise<CreateUserOutputDto[] | null> {
 		return this.usersService.find(query);
+	}
+
+	@UseGuards(AuthGuard)
+	@HttpCode(HttpStatus.OK)
+	@Patch('update/:id')
+	async update(@Param('id') id: number, @Body() user: User): Promise<CreateUserOutputDto | null> {
+		return this.usersService.update(id, user);
 	}
 }

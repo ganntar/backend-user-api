@@ -11,7 +11,7 @@ import { UsersController } from './users.controller';
     UsersService
   ],
   exports: [
-    UsersService
+    UsersService,
   ],
   controllers: [UsersController],
 })
