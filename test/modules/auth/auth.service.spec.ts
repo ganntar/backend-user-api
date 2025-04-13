@@ -5,6 +5,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { Role } from '@/shared/enums/role.enum';
+import { User } from '@/modules/users/users.entity';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -58,11 +59,17 @@ describe('AuthService', () => {
   });
 
   it('should throw UNAUTHORIZED if password is invalid', async () => {
-    const mockUser = { id: 1, email: 'test@example.com', senha: 'hashedPassword' };
+    const mockUser: User = {
+      id: 1,
+      email: 'test@test.com',
+      senha: 'hashedpassword',
+      nome: 'Test User',
+      funcao: Role.CLIENT,
+    };
     const loginDto = { email: 'test@example.com', senha: 'wrongPassword' };
 
     jest.spyOn(usersService, 'findEmail').mockResolvedValue(mockUser);
-    jest.spyOn(bcrypt, 'compare').mockResolvedValue(false);
+    jest.spyOn(bcrypt, 'compare' as any).mockResolvedValue(false);
 
     await expect(authService.login(loginDto)).rejects.toThrow(
       new HttpException('Senha Invalida!', HttpStatus.UNAUTHORIZED),
