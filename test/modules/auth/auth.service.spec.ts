@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from '@/modules/auth/auth.service';
-import { UsersService } from '@/modules/users/users.service';
+import { AuthService } from '../../../src/modules/auth/auth.service';
+import { UsersService } from '../../../src/modules/users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { HttpException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { HttpException, HttpStatus } from '@nestjs/common';
 import { Role } from '@/shared/enums/role.enum';
 
 describe('AuthService', () => {
-  let service: AuthService;
+  let authService: AuthService;
   let usersService: Partial<UsersService>;
   let jwtService: Partial<JwtService>;
 
@@ -17,7 +17,7 @@ describe('AuthService', () => {
     };
 
     jwtService = {
-      signAsync: jest.fn().mockResolvedValue('fake-token'),
+      signAsync: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -28,32 +28,44 @@ describe('AuthService', () => {
       ],
     }).compile();
 
-    service = module.get<AuthService>(AuthService);
+    authService = module.get<AuthService>(AuthService);
   });
 
-  it('deve retornar token se login for válido', async () => {
-    const user = { id: 1, email: 'test@test.com', senha: await bcrypt.hash('123456', 10), nome: 'Test User', funcao: 'User' as Role };
-    jest.spyOn(usersService, 'findEmail').mockResolvedValue(user);
-    jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+  it('should return an access token if login is successful', async () => {
+    const mockUser = { id: 1, email: 'test@example.com', senha: 'hashedPassword', nome: 'Test User', funcao: Role.ADMIN };
+    const loginDto = { email: 'test@example.com', senha: 'password' };
 
-    const result = await service.login({ email: user.email, senha: '123456' });
+    jest.spyOn(usersService, 'findEmail').mockResolvedValue(mockUser);
+    jest.spyOn(bcrypt, 'compare').mockImplementation(async () => true);
+    jest.spyOn(jwtService, 'signAsync').mockResolvedValue('mockAccessToken');
 
-    expect(result).toHaveProperty('access_token');
+    const result = await authService.login(loginDto);
+
+    expect(usersService.findEmail).toHaveBeenCalledWith(loginDto.email);
+    expect(bcrypt.compare).toHaveBeenCalledWith(loginDto.senha, mockUser.senha);
+    expect(jwtService.signAsync).toHaveBeenCalledWith({ sub: mockUser.id, username: mockUser.email });
+    expect(result).toEqual({ access_token: 'mockAccessToken' });
   });
 
-  it('deve lançar exceção se usuário não existir', async () => {
+  it('should throw NOT_FOUND if user does not exist', async () => {
+    const loginDto = { email: 'nonexistent@example.com', senha: 'password' };
+
     jest.spyOn(usersService, 'findEmail').mockResolvedValue(null);
 
-    await expect(service.login({ email: 'x@test.com', senha: '123' }))
-      .rejects.toThrow(HttpException);
+    await expect(authService.login(loginDto)).rejects.toThrow(
+      new HttpException('Usuario não existe!', HttpStatus.NOT_FOUND),
+    );
   });
 
-  it('deve lançar exceção se senha for inválida', async () => {
-    const user = { id: 1, email: 'test@test.com', senha: await bcrypt.hash('123456', 10), nome: 'Test User', funcao: 'User' as Role };
-    jest.spyOn(usersService, 'findEmail').mockResolvedValue(user);
-    jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
+  it('should throw UNAUTHORIZED if password is invalid', async () => {
+    const mockUser = { id: 1, email: 'test@example.com', senha: 'hashedPassword' };
+    const loginDto = { email: 'test@example.com', senha: 'wrongPassword' };
 
-    await expect(service.login({ email: 'test@test.com', senha: 'errada' }))
-      .rejects.toThrow(HttpException);
+    jest.spyOn(usersService, 'findEmail').mockResolvedValue(mockUser);
+    jest.spyOn(bcrypt, 'compare').mockResolvedValue(false);
+
+    await expect(authService.login(loginDto)).rejects.toThrow(
+      new HttpException('Senha Invalida!', HttpStatus.UNAUTHORIZED),
+    );
   });
 });

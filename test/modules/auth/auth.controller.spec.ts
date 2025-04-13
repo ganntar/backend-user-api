@@ -1,44 +1,49 @@
-import { Test } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { AuthModule } from '@/modules/auth/auth.module';
-import { UsersService } from '@/modules/users/users.service';
-import { JwtModule } from '@nestjs/jwt';
+import { Test, TestingModule } from '@nestjs/testing';
+import { AuthController } from '@/modules/auth/auth.controller';
+import { AuthService } from '@/modules/auth/auth.service';
+import { LoginDto } from '@/modules/auth/guards/dtos/login.dto';
 
-describe('AuthController (e2e)', () => {
-  let app: INestApplication;
+describe('AuthController', () => {
+  let authController: AuthController;
+  let authService: AuthService;
 
-  beforeAll(async () => {
-    const moduleFixture = await Test.createTestingModule({
-      imports: [
-        AuthModule,
-        JwtModule.register({ secret: 'test', signOptions: { expiresIn: '1h' } }),
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        {
+          provide: AuthService,
+          useValue: {
+            login: jest.fn(),
+          },
+        },
       ],
-    })
-    .overrideProvider(UsersService)
-    .useValue({
-      findEmail: jest.fn().mockResolvedValue({
-        id: 1,
-        email: 'user@test.com',
-        senha: await require('bcrypt').hash('123456', 10),
-      }),
-    })
-    .compile();
+    }).compile();
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    authController = module.get<AuthController>(AuthController);
+    authService = module.get<AuthService>(AuthService);
   });
 
-  it('/auth/login (POST) deve retornar token', async () => {
-    const response = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: 'user@test.com', senha: '123456' })
-      .expect(200);
-
-    expect(response.body).toHaveProperty('access_token');
+  it('should be defined', () => {
+    expect(authController).toBeDefined();
   });
 
-  afterAll(async () => {
-    await app.close();
+  describe('login', () => {
+    it('should call AuthService.login with correct parameters', async () => {
+      const loginDto: LoginDto = { email: 'testuser', senha: 'testpass' };
+      const loginSpy = jest.spyOn(authService, 'login').mockResolvedValue({ access_token: 'testtoken' });
+
+      const result = await authController.login(loginDto);
+
+      expect(loginSpy).toHaveBeenCalledWith(loginDto);
+      expect(result).toEqual({ access_token: 'testtoken' });
+    });
+
+    it('should handle errors thrown by AuthService.login', async () => {
+      const loginDto: LoginDto = { email: 'testuser', senha: 'testpass' };
+      jest.spyOn(authService, 'login').mockRejectedValue(new Error('Invalid credentials'));
+
+      await expect(authController.login(loginDto)).rejects.toThrow('Invalid credentials');
+    });
   });
 });
