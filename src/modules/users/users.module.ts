@@ -8,7 +8,7 @@ import { UsersController } from './users.controller';
   imports: [DatabaseModule],
   providers: [
     ...usersProviders,
-    UsersService
+    UsersService,
   ],
   exports: [
     UsersService,

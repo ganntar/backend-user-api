@@ -5,9 +5,9 @@ import { User } from './users.entity';
 import { CreateUserInputDto } from './dtos/create-user.input.dto';
 import { CreateUserOutputDto } from './dtos/create-user.output.dto';
 import { IUsersService } from './interface/users.service.interface';
-import e from 'express';
 import { Role } from '@/shared/enums/role.enum';
-import { ExceptionsHandler } from '@nestjs/core/exceptions/exceptions-handler';
+import { plainToInstance } from 'class-transformer';
+
 
 
 @Injectable()
@@ -18,16 +18,33 @@ export class UsersService implements IUsersService {
   {}
 
   async create(@Body() user: CreateUserInputDto): Promise<CreateUserOutputDto> {
-    //const hashPassword = await bcrypt.hash(user.password, 10);
+    if(user.funcao !== Role.ADMIN && user.funcao !== Role.CLIENT) {
+      throw new HttpException(
+        'Função digitada não é valida!',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const existingUser = await this.userRepo.findOne({ where: { email: user.email } });
+    if (existingUser) {
+      throw new HttpException(
+        'Usuario já existe!',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(user.senha, salt);
+    
     const newUser = {
       ...user,
- //     password: hashPassword,
+      senha: hashedPassword,
     };
 
     this.userRepo.create(newUser);
     const response = await this.userRepo.save(newUser);
 
-    return response;
+    return plainToInstance(CreateUserOutputDto,response);
   }
 
   async findEmail(email: string): Promise<User | null> {
@@ -35,7 +52,6 @@ export class UsersService implements IUsersService {
       where: { email },
       select: ['id', 'email', 'senha'], 
     });
-    console.log(response)
     if (!response) {
       throw new HttpException(
         'Usuario não encontrado!',

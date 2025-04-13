@@ -16,11 +16,13 @@ export class CreateUserOutputDto {
 
   @Exclude()
   senha: string;
+  
+  @IsEnum(Role, { message: 'Função deve ser admin ou cliente' })
+  funcao: Role;
 
   constructor(partial: Partial<CreateUserOutputDto>) {
     Object.assign(this, partial);
   }
 
-  @IsEnum(Role, { message: 'Função deve ser admin ou cliente' })
-  funcao: Role;
+
 }
