@@ -15,7 +15,7 @@ async function bootstrap() {
       scheme: 'bearer',
       bearerFormat: 'JWT',
       name: 'Authorization',
-      description: 'Digite: Bearer <seu_token_jwt>',
+      description: 'Digite em value o access_token obtido no login',
       in: 'header',
     },
     'access-token',
